@@ -2,6 +2,7 @@ name: Game
 env:
   itchio_project: aehmttw/Tanks
   itchio_channel: Universal_JAR
+  steam_app: 1660910
 on:
   workflow_dispatch:
   push:
@@ -52,3 +53,25 @@ jobs:
           channel: ${{ env.itchio_channel }}
           version: ${{ env.version }}
           api-key: ${{ secrets.ITCHIO_API_KEY }}
+  steam:
+    name: Steam
+    runs-on: ubuntu-latest
+    needs: build
+    steps:
+      - name: TOTP
+        uses: CyberAndrii/steam-totp@v1
+        id: steam-totp
+        with:
+          shared_secret: ${{ secrets.STEAM_SHARED_SECRET }}
+      - name: Upload
+        uses: game-ci/steam-deploy@v2
+        with:
+          username: ${{ secrets.STEAM_USERNAME }}
+          password: ${{ secrets.STEAM_PASSWORD }}
+          totp: ${{ steps.steam-totp.outputs.code }}
+          appId: ${{ env.steam_app }}
+          buildDescription: ${{ env.version }}
+          rootPath: build
+          depot1Path: StandaloneWindows64
+          depot2Path: StandaloneLinux64
+          releaseBranch: prerelease
