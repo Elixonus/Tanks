@@ -27,4 +27,4 @@ jobs:
       - name: Checkout
         uses: actions/checkout@main
       - name: Analyze
-        uses: codacy/codacy-analysis-cli-action@master
+        uses: codacy/codacy-analysis-cli-action@v4
