@@ -23,6 +23,9 @@ jobs:
           distribution: temurin
       - name: Build
         run: ./build.sh
+      - name: Version
+        run: |
+          echo "version=${GITHUB_REF/refs\/tags\/v/}" >> $GITHUB_ENV
       - name: Upload
         uses: actions/upload-artifact@v3
         with:
@@ -41,9 +44,6 @@ jobs:
         uses: actions/download-artifact@v3
         with:
           name: artifact
-      - name: Version
-        run: |
-          echo "version=${GITHUB_REF/refs\/tags\/v/}" >> $GITHUB_ENV
       - name: Upload
         uses: robpc/itchio-upload-action@v1
         with:
