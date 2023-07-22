@@ -1,6 +1,8 @@
 package tanks;
 
 import basewindow.*;
+import tanks.gui.TerrainRenderer;
+import tanks.gui.TrackRenderer;
 import tanks.network.event.EventPlaySound;
 import tanks.gui.Button;
 import tanks.gui.Joystick;
@@ -64,6 +66,9 @@ public class Drawing
 
 	public BaseShapeBatchRenderer currentTerrainRenderer;
 
+	public TerrainRenderer terrainRenderer2;
+	public TrackRenderer trackRenderer;
+
 	public BaseShapeBatchRenderer terrainRenderer;
 	public BaseShapeBatchRenderer terrainRendererTransparent;
 	public BaseShapeBatchRenderer terrainRendererShrubbery;
@@ -77,9 +82,9 @@ public class Drawing
 
 	public static class LevelRenderer
 	{
-		public BaseShapeBatchRenderer terrainRenderer = Game.game.window.createShapeBatchRenderer();
-		public BaseShapeBatchRenderer terrainRendererTransparent = Game.game.window.createShapeBatchRenderer();
-		public BaseShapeBatchRenderer terrainRendererShrubbery = Game.game.window.createShapeBatchRenderer();
+		public BaseShapeBatchRenderer terrainRenderer = Game.game.window.createShapeBatchRenderer(true);
+		public BaseShapeBatchRenderer terrainRendererTransparent = Game.game.window.createShapeBatchRenderer(true);
+		public BaseShapeBatchRenderer terrainRendererShrubbery = Game.game.window.createShapeBatchRenderer(true);
 
 		public void free()
 		{
@@ -676,7 +681,8 @@ public class Drawing
 	public void fillBox(IBatchRenderableObject o, double x, double y, double z, double sizeX, double sizeY, double sizeZ, byte options)
 	{
 		if (this.terrainRendering)
-			this.currentTerrainRenderer.fillBox(o, x - sizeX / 2, y - sizeY / 2, z, sizeX, sizeY, sizeZ, options);
+			this.terrainRenderer2.addBox(o, x - sizeX / 2, y - sizeY / 2, z, sizeX, sizeY, sizeZ, options, false);
+			//this.currentTerrainRenderer.fillBox(o, x - sizeX / 2, y - sizeY / 2, z, sizeX, sizeY, sizeZ, options);
 		else
 		{
 			double shrubMod = 1;

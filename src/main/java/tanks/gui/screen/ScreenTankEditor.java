@@ -988,6 +988,7 @@ public class ScreenTankEditor extends Screen implements IItemScreen
                 t.hoverText = formatDescription(p);
                 t.enableHover = !p.desc().equals("");
                 t.maxChars = 9;
+                t.allowNegatives = true;
                 t.allowLetters = false;
                 t.allowSpaces = false;
 
@@ -1007,13 +1008,21 @@ public class ScreenTankEditor extends Screen implements IItemScreen
                     }
                     catch (Exception e)
                     {
-                        Game.exitToCrash(e);
+                        try
+                        {
+                            t.inputText = f.get(tank) + "";
+                        }
+                        catch (IllegalAccessException ex)
+                        {
+                            Game.exitToCrash(ex);
+                        }
                     }
                 };
 
                 t.hoverText = formatDescription(p);
                 t.enableHover = !p.desc().equals("");
                 t.allowDoubles = true;
+                t.allowNegatives = true;
                 t.allowLetters = false;
                 t.allowSpaces = false;
 
@@ -1272,6 +1281,11 @@ public class ScreenTankEditor extends Screen implements IItemScreen
                 }
 
                 Collections.sort(musics, (o1, o2) -> o1.compareTo(o2));
+
+                for (int i = 1; i <= 8; i++)
+                {
+                    musics.add("arcade/rampage" + i + ".ogg");
+                }
 
                 String[] musicsArray = new String[musics.size()];
                 boolean[] selectedMusicsArray = new boolean[musics.size()];

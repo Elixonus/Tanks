@@ -1,8 +1,11 @@
 package tanks;
 
 import basewindow.BaseFile;
+import basewindow.IBatchRenderableObject;
 import basewindow.InputCodes;
 import basewindow.transformation.Translation;
+import tanks.gui.TerrainRenderer;
+import tanks.gui.TrackRenderer;
 import tanks.network.event.EventBeginLevelCountdown;
 import tanks.network.event.online.IOnlineServerEvent;
 import tanks.extension.Extension;
@@ -118,6 +121,8 @@ public class Panel
 		Drawing.drawing.terrainRenderer = Drawing.drawing.defaultRenderer.terrainRenderer;
 		Drawing.drawing.terrainRendererTransparent = Drawing.drawing.defaultRenderer.terrainRendererTransparent;
 		Drawing.drawing.terrainRendererShrubbery = Drawing.drawing.defaultRenderer.terrainRendererShrubbery;
+		Drawing.drawing.terrainRenderer2 = new TerrainRenderer();
+		Drawing.drawing.trackRenderer = new TrackRenderer();
 
 		ModAPI.setUp();
 
@@ -127,6 +132,12 @@ public class Panel
 			Game.game.window.setFullscreen(Game.game.fullscreen);
 
 		Game.game.window.setIcon("/images/icon64.png");
+
+		if (Game.game.window.soundPlayer == null)
+		{
+			Game.soundsEnabled = false;
+			Game.musicEnabled = false;
+		}
 
 		double scale = 1;
 		if (Game.game.window.touchscreen && Game.game.window.pointHeight > 0 && Game.game.window.pointHeight <= 500)
@@ -232,6 +243,7 @@ public class Panel
 		settingUp = false;
 	}
 
+	public boolean screenshot = false;
 	public void update()
 	{
 		if (firstFrame)
@@ -303,7 +315,7 @@ public class Panel
 				Drawing.drawing.playMusic("menu_intro.ogg", Game.musicVolume, false, "intro", 0, false);
 		}
 
-		Game.game.window.constrainMouse = Game.constrainMouse && ((Game.screen instanceof ScreenGame && !((ScreenGame) Game.screen).paused) || Game.screen instanceof ScreenLevelEditor);
+		Game.game.window.constrainMouse = Game.constrainMouse && ((Game.screen instanceof ScreenGame && !((ScreenGame) Game.screen).paused && ((ScreenGame) Game.screen).playing && Game.playerTank != null && !Game.playerTank.destroy) || Game.screen instanceof ScreenLevelEditor);
 
 		if (!Game.shadowsEnabled)
 			Game.game.window.setShadowQuality(0);
@@ -447,17 +459,6 @@ public class Panel
 			{
 				Drawing.drawing.playerX = ((ScreenGame) Game.screen).spectatingTank.posX;
 				Drawing.drawing.playerY = ((ScreenGame) Game.screen).spectatingTank.posY;
-
-				if (((ScreenGame) Game.screen).spectatingTank instanceof TankRemote)
-				{
-					Drawing.drawing.playerX = ((TankRemote) ((ScreenGame) Game.screen).spectatingTank).interpolatedPosX;
-					Drawing.drawing.playerY = ((TankRemote) ((ScreenGame) Game.screen).spectatingTank).interpolatedPosY;
-				}
-				else if (((ScreenGame) Game.screen).spectatingTank instanceof TankPlayerRemote)
-				{
-					Drawing.drawing.playerX = ((TankPlayerRemote) ((ScreenGame) Game.screen).spectatingTank).interpolatedPosX;
-					Drawing.drawing.playerY = ((TankPlayerRemote) ((ScreenGame) Game.screen).spectatingTank).interpolatedPosY;
-				}
 			}
 			else
 			{
@@ -689,6 +690,7 @@ public class Panel
 
 		if (this.frameStartTime - startTime < introTime + introAnimationTime)
 		{
+			this.frameStartTime += 100000;
 			Drawing.drawing.forceRedrawTerrain();
 			double frac = ((this.frameStartTime - startTime - introTime) / introAnimationTime);
 
@@ -745,6 +747,12 @@ public class Panel
 
 			return;
 		}
+
+		if (Drawing.drawing.terrainRenderer2 == null)
+			Drawing.drawing.terrainRenderer2 = new TerrainRenderer();
+
+		if (Drawing.drawing.trackRenderer == null)
+			Drawing.drawing.trackRenderer = new TrackRenderer();
 
 		if (!(Game.screen instanceof ScreenGame))
 		{
@@ -818,6 +826,10 @@ public class Panel
 		if (Game.screen.showDefaultMouse)
 			this.drawMouseTarget();
 
+		Drawing.drawing.setColor(255, 255, 255);
+		if (screenshot)
+			Game.game.window.shapeRenderer.drawImage(100, 100, 500, 500, "screenshot", false);
+
 		Drawing.drawing.setColor(0, 0, 0, 0);
 		Drawing.drawing.fillInterfaceRect(0, 0, 0, 0);
 
@@ -825,6 +837,9 @@ public class Panel
 
 		if (!Game.game.window.drawingShadow && (Game.screen instanceof ScreenGame && !(((ScreenGame) Game.screen).paused && !ScreenPartyHost.isServer && !ScreenPartyLobby.isClient)))
 			this.age += Panel.frameFrequency;
+
+//		if (!Game.game.window.drawingShadow)
+//			Drawing.drawing.terrainRenderer2.draw();
 	}
 
 	public void drawMouseTarget()
