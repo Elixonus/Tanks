@@ -39,6 +39,7 @@ public class BulletAir extends Bullet
         this.damage = 0;
         this.pitchVariation = 1;
         this.canMultiDamage = true;
+        this.canBeCanceled = false;
     }
 
     @Override
@@ -74,7 +75,7 @@ public class BulletAir extends Bullet
 
         double f = Math.pow(this.frameDamageMultipler, 2);
 
-        System.out.println(f + " " + mul / (size * size));
+        //System.out.println(f + " " + mul / (size * size));
 
         double x = this.vX * f * mul / (size * size);
         double y = this.vY * f * mul / (size * size);

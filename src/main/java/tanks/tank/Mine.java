@@ -7,11 +7,12 @@ import tanks.gui.IFixedMenu;
 import tanks.gui.Scoreboard;
 import tanks.gui.screen.ScreenPartyLobby;
 import tanks.hotbar.item.ItemMine;
+import tanks.obstacle.Obstacle;
 
 import java.util.ArrayList;
 import java.util.HashMap;
 
-public class Mine extends Movable implements IAvoidObject
+public class Mine extends Movable implements IAvoidObject, IDrawableLightSource
 {
     public static double mine_size = 30;
     public static double mine_radius = Game.tile_size * 2.5;
@@ -35,14 +36,16 @@ public class Mine extends Movable implements IAvoidObject
     public int lastBeep = Integer.MAX_VALUE;
 
     public double knockbackRadius = this.radius * 2;
-    public double bulletKnockback = 10;
-    public double tankKnockback = 10;
+    public double bulletKnockback = 0;
+    public double tankKnockback = 0;
 
     public int networkID = -1;
 
     public static int currentID = 0;
     public static ArrayList<Integer> freeIDs = new ArrayList<>();
     public static HashMap<Integer, Mine> idMap = new HashMap<>();
+
+    public double[] lightInfo = new double[]{0, 0, 0, 0, 0, 0, 0};
 
     public Mine(double x, double y, double timer, Tank t, ItemMine item)
     {
@@ -287,5 +290,22 @@ public class Mine extends Movable implements IAvoidObject
             Drawing.drawing.addVertex(posX + Math.cos(angle) * size * inner, posY + Math.sin(angle) * size * inner, 0);
         }
         Game.game.window.shapeRenderer.setBatchMode(false, true, false);
+    }
+
+    @Override
+    public boolean lit()
+    {
+        return Game.fancyLights;
+    }
+
+    @Override
+    public double[] getLightInfo()
+    {
+        this.lightInfo[3] = 2;
+
+        this.lightInfo[4] = this.outlineColorR;
+        this.lightInfo[5] = this.outlineColorG;
+        this.lightInfo[6] = this.outlineColorB;
+        return this.lightInfo;
     }
 }

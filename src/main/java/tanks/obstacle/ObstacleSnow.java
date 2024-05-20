@@ -4,6 +4,7 @@ import tanks.*;
 import tanks.bullet.Bullet;
 import tanks.network.event.EventObstacleSnowMelt;
 import tanks.gui.screen.*;
+import tanks.rendering.ShaderSnow;
 import tanks.tank.Tank;
 import tanks.tank.TankAIControlled;
 
@@ -51,6 +52,8 @@ public class ObstacleSnow extends Obstacle
         this.baseColorB = this.colorB;
 
         this.description = "A thick, melting pile of snow that slows tanks and bullets down";
+
+        this.renderer = ShaderSnow.class;
     }
 
     @Override
@@ -64,6 +67,7 @@ public class ObstacleSnow extends Obstacle
             int amt = 5;
             int lastDepth = (int) Math.ceil(this.depth * amt);
             this.depth -= Panel.frameFrequency * 0.005;
+            Game.redrawObstacles.add(this);
 
             if (this.depth <= 0)
                 Game.removeObstacles.add(this);
@@ -81,7 +85,10 @@ public class ObstacleSnow extends Obstacle
         if (Game.effectsEnabled && !ScreenGame.finished)
         {
             if (ScreenPartyLobby.isClient)
+            {
                 this.depth = Math.max(0.05, this.depth - Panel.frameFrequency * 0.005);
+                Game.redrawObstacles.add(this);
+            }
 
             double speed = Math.sqrt((Math.pow(m.vX, 2) + Math.pow(m.vY, 2)));
 
@@ -112,12 +119,12 @@ public class ObstacleSnow extends Obstacle
     @Override
     public void draw()
     {
-        if (!Game.game.window.shapeRenderer.supportsBatching)
+        if (!Game.game.window.shapeRenderer.supportsBatching || !Game.enable3d)
         {
             if (Game.screen instanceof ScreenGame && (ScreenPartyHost.isServer || ScreenPartyLobby.isClient || !((ScreenGame) Game.screen).paused))
                 this.visualDepth = Math.min(this.visualDepth + Panel.frameFrequency / 255, 1);
 
-            if (Game.screen instanceof ILevelPreviewScreen || Game.screen instanceof IOverlayScreen || Game.screen instanceof ScreenGame && (!((ScreenGame) Game.screen).playing))
+            if (Game.screen instanceof ILevelPreviewScreen || Game.screen instanceof ICrusadePreviewScreen || Game.screen instanceof IOverlayScreen || Game.screen instanceof ScreenGame && (!((ScreenGame) Game.screen).playing))
             {
                 this.visualDepth = 0.5;
             }
@@ -139,37 +146,21 @@ public class ObstacleSnow extends Obstacle
         }
         else
         {
-            double mul = 1;
-
-            if (Game.game.window.shapeRenderer.supportsBatching && Obstacle.draw_size > 0 && Obstacle.draw_size < Game.tile_size)
-                mul = 2;
+//            double mul = 1;
+//
+//            if (Game.game.window.shapeRenderer.supportsBatching && Obstacle.draw_size > 0 && Obstacle.draw_size < Game.tile_size)
+//                mul = 2;
 
             double base = this.baseGroundHeight;
-            double z = Math.max(this.depth * 0.8 * (Obstacle.draw_size - base * (mul - 1)), 0);
+            double z = Math.max(this.depth * 0.8 * Game.tile_size, 0);
 
             this.finalHeight = 0;
 
             if (z > 0)
             {
-                this.finalHeight = z * this.visualDepth;
-                int x = Math.min(Game.currentSizeX - 1, (int) Math.max(0, this.posX / Game.tile_size));
-                int y = Math.min(Game.currentSizeY - 1, (int) Math.max(0, this.posY / Game.tile_size));
-
-                double r = Game.tilesR[x][y];
-                double g = Game.tilesG[x][y];
-                double b = Game.tilesB[x][y];
-
-                if (!Game.fancyTerrain)
-                {
-                    r = Level.currentColorR;
-                    g = Level.currentColorG;
-                    b = Level.currentColorB;
-                }
-
-                double frac = z / (this.depth * 0.8 * (Game.tile_size - base));
-                Drawing.drawing.setColor(this.colorR * frac + r * (1 - frac), this.colorG * frac + g * (1 - frac), this.colorB * frac + b * (1 - frac));
-                Drawing.drawing.setShrubberyMode();
-                Drawing.drawing.fillBox(this, this.posX, this.posY, this.baseGroundHeight * mul, Game.tile_size, Game.tile_size, z * this.visualDepth, (byte) (this.getOptionsByte(this.getTileHeight()) + 1));
+                this.finalHeight = z;
+                Drawing.drawing.setColor(this.colorR, this.colorG, this.colorB);
+                Drawing.drawing.fillBox(this, this.posX, this.posY, 0, Game.tile_size, Game.tile_size, z * this.visualDepth, (byte) (this.getOptionsByte(this.getTileHeight()) + 1));
             }
         }
     }
@@ -186,13 +177,5 @@ public class ObstacleSnow extends Obstacle
             shrubScale = ((ScreenGame) Game.screen).shrubberyScale;
 
         return shrubScale * (this.finalHeight + this.baseGroundHeight);
-    }
-
-    public boolean positionChanged()
-    {
-        boolean r = this.previousFinalHeight != this.finalHeight;
-        this.previousFinalHeight = this.finalHeight;
-
-        return r;
     }
 }

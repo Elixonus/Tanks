@@ -31,6 +31,8 @@ public class BulletFlame extends Bullet implements IDrawableWithGlow
 		this.bulletCollision = false;
 		this.itemSound = "flame.ogg";
 		this.pitchVariation = 0.0;
+		this.canBeCanceled = false;
+		this.burnsBushes = true;
 	}
 	
 	@Override
@@ -40,7 +42,6 @@ public class BulletFlame extends Bullet implements IDrawableWithGlow
 		{
 			this.sizeMul = this.size / Bullet.bullet_size;
 			this.life *= this.sizeMul;
-			System.out.println(this.frameDamageMultipler);
 		}
 
 		this.age += Panel.frameFrequency;

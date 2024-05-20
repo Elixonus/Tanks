@@ -155,7 +155,6 @@ public class ScreenCrusadePreview extends Screen implements IItemScreen
                 , crusade.name.replace("_", " "));
 
         crusadeName.enableCaps = true;
-        crusadeName.maxChars = 18;
 
         this.updateDownloadButton();
     }
@@ -313,7 +312,7 @@ public class ScreenCrusadePreview extends Screen implements IItemScreen
     public void addItem(Item i)
     {
         crusade.crusadeItems.add(i);
-        Game.screen = new ScreenEditItem(i, instance);
+        Game.screen = new ScreenItemEditor(i, instance);
     }
 
     @Override

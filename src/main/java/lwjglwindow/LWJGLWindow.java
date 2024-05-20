@@ -30,8 +30,6 @@ import static org.lwjgl.glfw.Callbacks.glfwFreeCallbacks;
 import static org.lwjgl.glfw.GLFW.*;
 import static org.lwjgl.opengl.GL11.*;
 import static org.lwjgl.opengl.GL13.*;
-import static org.lwjgl.opengl.GL20.glUniform1f;
-import static org.lwjgl.opengl.GL20.glUniform1i;
 import static org.lwjgl.system.MemoryStack.stackPush;
 import static org.lwjgl.system.MemoryUtil.NULL;
 
@@ -298,11 +296,8 @@ public class LWJGLWindow extends BaseWindow
 	{
 		try
 		{
-			this.shaderShadowMap = new ShaderShadowMap(this);
-			this.shaderShadowMap.initialize();
-
-			this.shaderBase = new ShaderBase(this);
-			this.shaderBase.initialize();
+			this.shaderDefault = new ShaderGroup(this, "default");
+			this.shaderDefault.initialize();
 		}
 		catch (Exception e)
 		{
@@ -493,7 +488,7 @@ public class LWJGLWindow extends BaseWindow
 		glColor4d(this.colorR, this.colorG, this.colorB, this.colorA);
 
 		if (!drawingShadow)
-			this.currentBaseShader.glow.set((float) glow);
+			this.currentShaderGroup.shaderBase.glow.set((float) glow);
 	}
 
 	public void setColor(double r, double g, double b, double a)
@@ -506,7 +501,7 @@ public class LWJGLWindow extends BaseWindow
 		glColor4d(this.colorR, this.colorG, this.colorB, this.colorA);
 
 		if (!drawingShadow)
-			this.currentBaseShader.glow.set(0);
+			this.currentShaderGroup.shaderBase.glow.set(0f);
 	}
 
 	public void setColor(double r, double g, double b)
@@ -519,7 +514,7 @@ public class LWJGLWindow extends BaseWindow
 		glColor3d(this.colorR, this.colorG, this.colorB);
 
 		if (!drawingShadow)
-			this.currentBaseShader.glow.set(0);
+			this.currentShaderGroup.shaderBase.glow.set(0f);
 	}
 
 	protected void createImage(String image)
@@ -617,7 +612,12 @@ public class LWJGLWindow extends BaseWindow
 			}
 		}
 
-		ByteBuffer buf = ByteBuffer.allocateDirect(16 * this.scaledLights.size());
+
+		int p = 1;
+		while (p < lights.size() * 4)
+			p *= 2;
+
+		ByteBuffer buf = ByteBuffer.allocateDirect(4 * p);
 
 		for (double[] l : this.scaledLights)
 		{
@@ -649,9 +649,9 @@ public class LWJGLWindow extends BaseWindow
 
 		buf.flip();
 
-//		glUniform1i(this.lightsCountFlag, lights.size());
-//		glUniform1f(this.scaleFlag, (float) scale);
-//		glUniform1i(this.lightsFlag,2);
+		currentShaderGroup.shaderBase.lightsCount.set(lights.size());
+		currentShaderGroup.shaderBase.lightsTexSize.set(p);
+		currentShaderGroup.shaderBase.scale.set((float) scale);
 
 		glEnable(GL_TEXTURE_2D);
 		glActiveTexture(GL_TEXTURE2);
@@ -661,7 +661,7 @@ public class LWJGLWindow extends BaseWindow
 		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
 		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP);
 		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP);
-		glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, lights.size() * 4, 1, 0, GL_RGBA, GL_UNSIGNED_BYTE, buf);
+		glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, p, 1, 0, GL_RGBA, GL_UNSIGNED_BYTE, buf);
 		glActiveTexture(GL_TEXTURE0);
 	}
 
@@ -722,10 +722,12 @@ public class LWJGLWindow extends BaseWindow
 		glMatrixMode(GL_PROJECTION);
 		glLoadIdentity();
 
+		double m = clipMultiplier;
+
 		if (this.drawingShadow)
 			glOrtho(0, absoluteWidth, absoluteHeight, 0, -absoluteDepth, absoluteDepth);
 		else
-			glFrustum(-absoluteWidth / (absoluteDepth * 2.0), absoluteWidth / (absoluteDepth * 2.0), absoluteHeight / (absoluteDepth * 2.0), -absoluteHeight / (absoluteDepth * 2.0), 1, absoluteDepth * 100);
+			glFrustum(-absoluteWidth / (absoluteDepth * 2.0) * m, absoluteWidth / (absoluteDepth * 2.0) * m, absoluteHeight / (absoluteDepth * 2.0) * m, -absoluteHeight / (absoluteDepth * 2.0) * m, m, absoluteDepth * m * clipDistMultiplier);
 
 		this.angled = false;
 
@@ -775,22 +777,16 @@ public class LWJGLWindow extends BaseWindow
 		if (this.drawingShadow)
 		{
 			applyShadowTransformations();
+
 			for (Transformation t: this.lightBaseTransformation)
 				t.apply();
 		}
 		else
 		{
 			applyTransformations();
+
 			for (Transformation t: this.baseTransformations)
 				t.apply();
-
-			if (!drawingShadow)
-			{
-				float[] projMatrix = new float[16];
-				glGetFloatv(GL_PROJECTION_MATRIX, projMatrix);
-
-				//glUniformMatrix4fv(this.shaderHandler.normalProgramVPUniform, false, projMatrix);
-			}
 		}
 	}
 
@@ -1058,10 +1054,10 @@ public class LWJGLWindow extends BaseWindow
 	@Override
 	public void setLighting(double light, double glowLight, double shadow, double glowShadow)
 	{
-		this.currentBaseShader.light.set((float) light);
-		this.currentBaseShader.glowLight.set((float) glowLight);
-		this.currentBaseShader.shade.set((float) shadow);
-		this.currentBaseShader.glowShade.set((float) glowShadow);
+		this.currentShaderGroup.shaderBase.light.set((float) light);
+		this.currentShaderGroup.shaderBase.glowLight.set((float) glowLight);
+		this.currentShaderGroup.shaderBase.shade.set((float) shadow);
+		this.currentShaderGroup.shaderBase.glowShade.set((float) glowShadow);
 	}
 
 	@Override
@@ -1151,9 +1147,7 @@ public class LWJGLWindow extends BaseWindow
 		glEnable(GL_TEXTURE_2D);
 
 		if (!drawingShadow)
-			this.currentBaseShader.texture.set(true);
-		else
-			this.currentShadowMapShader.texture.set(true);
+			this.currentShaderGroup.shaderBase.texture.set(true);
 
 		GL20.glActiveTexture(GL13.GL_TEXTURE0);
 	}
@@ -1164,9 +1158,7 @@ public class LWJGLWindow extends BaseWindow
 		glDisable(GL_TEXTURE_2D);
 
 		if (!drawingShadow)
-			this.currentBaseShader.texture.set(false);
-		else
-			this.currentShadowMapShader.texture.set(false);
+			this.currentShaderGroup.shaderBase.texture.set(false);
 
 		glEnable(GL_TEXTURE_2D);
 		GL20.glActiveTexture(GL13.GL_TEXTURE1);
@@ -1178,7 +1170,7 @@ public class LWJGLWindow extends BaseWindow
 		glEnable(GL_DEPTH_TEST);
 
 		if (!drawingShadow)
-			this.currentBaseShader.depthtest.set(true);
+			this.currentShaderGroup.shaderBase.depthtest.set(true);
 	}
 
 	public void disableDepthtest()
@@ -1186,7 +1178,7 @@ public class LWJGLWindow extends BaseWindow
 		glDisable(GL_DEPTH_TEST);
 
 		if (!drawingShadow)
-			this.currentBaseShader.depthtest.set(false);
+			this.currentShaderGroup.shaderBase.depthtest.set(false);
 	}
 
 	public void enableDepthmask()
@@ -1245,20 +1237,19 @@ public class LWJGLWindow extends BaseWindow
 	}
 
 	@Override
-	public BaseShapeBatchRenderer createShapeBatchRenderer(boolean dynamic)
+	public BaseShapeBatchRenderer createShapeBatchRenderer()
 	{
-		return new DummyShapeBatchRenderer(true);
+		return new VBOShapeBatchRenderer(this);
 	}
 
 	@Override
-	public BaseShapeBatchRenderer2 createShapeBatchRenderer2()
+	public BaseShapeBatchRenderer createShapeBatchRenderer(ShaderGroup shader)
 	{
-		return new VBOShapeBatchRenderer2(this);
+		return new VBOShapeBatchRenderer(this, shader);
 	}
 
-
 	@Override
-	public BaseStaticBatchRenderer createStaticBatchRenderer(ShaderProgram shader, boolean color, String texture, boolean normal, int vertices)
+	public BaseStaticBatchRenderer createStaticBatchRenderer(ShaderGroup shader, boolean color, String texture, boolean normal, int vertices)
 	{
 		return new VBOStaticBatchRenderer(this, shader, color, texture, normal, vertices);
 	}
@@ -1267,29 +1258,5 @@ public class LWJGLWindow extends BaseWindow
 	public BaseShaderUtil getShaderUtil(ShaderProgram p)
 	{
 		return new ShaderUtil(this, p);
-	}
-
-	@Override
-	public void setShader(ShaderBase s)
-	{
-		ShaderBase old = this.currentBaseShader;
-		this.currentBaseShader = s;
-		this.currentShader = s;
-		s.set();
-
-		if (old != null)
-			s.copyUniformsFrom(old, ShaderBase.class);
-	}
-
-	@Override
-	public void setShader(ShaderShadowMap s)
-	{
-		ShaderShadowMap old = this.currentShadowMapShader;
-		this.currentShadowMapShader = s;
-		this.currentShader = s;
-		s.set();
-
-		if (old != null)
-			s.copyUniformsFrom(old, ShaderShadowMap.class);
 	}
 }

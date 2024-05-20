@@ -681,8 +681,6 @@ public class Level
 
 	public void reloadTiles()
 	{
-		Drawing.drawing.forceRedrawTerrain();
-
 		Game.currentSizeX = (int) (sizeX * Game.bgResMultiplier);
 		Game.currentSizeY = (int) (sizeY * Game.bgResMultiplier);
 
@@ -714,7 +712,8 @@ public class Level
 					Game.tilesR[i][j] = (colorR + tilesRandom.nextDouble() * colorVarR);
 					Game.tilesG[i][j] = (colorG + tilesRandom.nextDouble() * colorVarG);
 					Game.tilesB[i][j] = (colorB + tilesRandom.nextDouble() * colorVarB);
-					Game.tilesDepth[i][j] = tilesRandom.nextDouble() * 10;
+					double rand = tilesRandom.nextDouble() * 10;
+					Game.tilesDepth[i][j] = Game.enable3dBg ? rand : 0;
 				}
 				else
 				{
@@ -789,6 +788,6 @@ public class Level
 
 	public static boolean isDark()
 	{
-		return Level.currentColorR + Level.currentColorG + Level.currentColorB <= 127 * 3 || (Game.framework != Game.Framework.libgdx && currentLightIntensity <= 0.5);
+		return Level.currentColorR * 0.2126 + Level.currentColorG * 0.7152 + Level.currentColorB * 0.0722 <= 127 || (Game.framework != Game.Framework.libgdx && currentLightIntensity <= 0.5);
 	}
 }

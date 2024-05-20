@@ -26,6 +26,9 @@ public abstract class BaseWindow
     public double absoluteHeight;
     public double absoluteDepth;
 
+    public double clipMultiplier = 100;
+    public double clipDistMultiplier = 1;
+
     public boolean hasResized;
 
     public double absoluteMouseX;
@@ -69,7 +72,7 @@ public abstract class BaseWindow
     public double keyboardFraction = 1;
 
     public ArrayList<Long> framesList = new ArrayList<>();
-    public long lastFrame = System.currentTimeMillis();
+    public long lastFrame = System.nanoTime();
     public double frameFrequency = 1;
 
     public String name;
@@ -109,14 +112,12 @@ public abstract class BaseWindow
 
     public ModelPart.ShapeDrawer shapeDrawer;
 
-    public ShaderBase shaderBase;
-    public ShaderShadowMap shaderShadowMap;
+    public ShaderGroup shaderDefault;
 
     public ShaderBones shaderBaseBones;
     public ShaderShadowMapBones shaderShadowMapBones;
 
-    public ShaderBase currentBaseShader;
-    public ShaderShadowMap currentShadowMapShader;
+    public ShaderGroup currentShaderGroup;
 
     public ShaderProgram currentShader;
 
@@ -265,17 +266,41 @@ public abstract class BaseWindow
 
     public abstract PosedModel createPosedModel(Model m);
 
-    public abstract BaseStaticBatchRenderer createStaticBatchRenderer(ShaderProgram shader, boolean color, String texture, boolean normal, int vertices);
+    public abstract BaseStaticBatchRenderer createStaticBatchRenderer(ShaderGroup shader, boolean color, String texture, boolean normal, int vertices);
 
-    public abstract BaseShapeBatchRenderer createShapeBatchRenderer(boolean dynamic);
+    public abstract BaseShapeBatchRenderer createShapeBatchRenderer();
 
-    public abstract BaseShapeBatchRenderer2 createShapeBatchRenderer2();
+    public abstract BaseShapeBatchRenderer createShapeBatchRenderer(ShaderGroup shader);
 
     public abstract BaseShaderUtil getShaderUtil(ShaderProgram p);
 
-    public abstract void setShader(ShaderBase s);
+    public void setShader(ShaderBase s)
+    {
+        ShaderBase old = null;
+        if (this.currentShaderGroup != null)
+            old = this.currentShaderGroup.shaderBase;
 
-    public abstract void setShader(ShaderShadowMap s);
+        this.currentShaderGroup = s.group;
+        this.currentShader = s;
+        s.set();
+
+        if (old != null)
+            s.copyUniformsFrom(old, ShaderBase.class);
+    }
+
+    public void setShader(ShaderShadowMap s)
+    {
+        ShaderShadowMap old = null;
+        if (this.currentShaderGroup != null)
+            old = this.currentShaderGroup.shaderShadowMap;
+
+        this.currentShaderGroup = s.group;
+        this.currentShader = s;
+        s.set();
+
+        if (old != null)
+            s.copyUniformsFrom(old, ShaderShadowMap.class);
+    }
 
     public void setupKeyCodes()
     {

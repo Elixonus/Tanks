@@ -350,6 +350,11 @@ public class ScreenTitle extends Screen implements ISeparateBackgroundScreen
 
 	public void drawWithoutBackground()
 	{
+		languages.posX = -(Game.game.window.absoluteWidth / Drawing.drawing.interfaceScale - Drawing.drawing.interfaceSizeX) / 2
+				+ Game.game.window.getEdgeBounds() / Drawing.drawing.interfaceScale + 50 * Drawing.drawing.interfaceScaleZoom;
+		languages.posY = ((Game.game.window.absoluteHeight - Drawing.drawing.statsHeight) / Drawing.drawing.interfaceScale - Drawing.drawing.interfaceSizeY) / 2
+				+ Drawing.drawing.interfaceSizeY - 50 * Drawing.drawing.interfaceScaleZoom;
+
 		if (this.logo == null)
 		{
 			this.logo = new TankPlayer(Drawing.drawing.sizeX / 2, Drawing.drawing.sizeY / 2 - 250 * Drawing.drawing.interfaceScaleZoom, 0);
@@ -374,6 +379,8 @@ public class ScreenTitle extends Screen implements ISeparateBackgroundScreen
 
 			Game.movables.add(logo);
 		}
+
+		this.logo.luminance = Math.max(0.5, 1 - this.screenAge / 50.0);
 
 		play.draw();
 		exit.draw();
@@ -402,10 +409,10 @@ public class ScreenTitle extends Screen implements ISeparateBackgroundScreen
 		Drawing.drawing.setInterfaceFontSize(this.titleSize);
 		Drawing.drawing.displayInterfaceText(this.lCenterX, this.lCenterY - this.objYSpace * 2 / 9, "The Crusades");
 
-		for (int i = 0; i < Game.tracks.size(); i++)
-		{
-			Game.tracks.get(i).draw();
-		}
+//		for (int i = 0; i < Game.tracks.size(); i++)
+//		{
+//			Game.tracks.get(i).draw();
+//		}
 
 		for (int i = Game.movables.size() - 1; i >= 0; i--)
 		{

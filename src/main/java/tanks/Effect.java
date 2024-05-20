@@ -2,6 +2,7 @@ package tanks;
 
 import basewindow.IBatchRenderableObject;
 import tanks.bullet.Bullet;
+import tanks.rendering.TrackRenderer;
 import tanks.minigames.Arcade;
 import tanks.gui.screen.ScreenGame;
 import tanks.obstacle.Obstacle;
@@ -36,8 +37,6 @@ public class Effect extends Movable implements IDrawableWithGlow, IDrawableLight
 
     public int initialGridX;
     public int initialGridY;
-
-    public boolean firstDraw = true;
 
     public double[] lightInfo = new double[7];
 
@@ -132,9 +131,7 @@ public class Effect extends Movable implements IDrawableWithGlow, IDrawableLight
         }
         else if (type == EffectType.tread)
         {
-            this.maxAge = 510;
-            if (Game.effectsEnabled)
-                this.maxAge *= 2;
+            this.maxAge = TrackRenderer.getMaxTrackAge();
         }
         else if (type == EffectType.darkFire)
             this.maxAge = 20;
@@ -205,7 +202,6 @@ public class Effect extends Movable implements IDrawableWithGlow, IDrawableLight
         this.state = State.live;
         this.force = false;
         this.fastRemoveOnExit = false;
-        this.firstDraw = true;
     }
 
     @Override
@@ -358,25 +354,6 @@ public class Effect extends Movable implements IDrawableWithGlow, IDrawableLight
             else
                 drawing.fillOval(this.posX, this.posY, size, size);
         }
-        else if (this.type == EffectType.tread)
-        {
-            if (firstDraw)
-            {
-                Drawing.drawing.setColor(0, 0, 0, 64);
-                Drawing.drawing.trackRenderer.addRect(this, this.posX, this.posY, this.posZ, size * Obstacle.draw_size / Game.tile_size, size * Obstacle.draw_size / Game.tile_size, angle);
-            }
-
-            /*double opacityFactor = 2;
-
-            if (Game.effectsEnabled)
-            {
-                opacityFactor = 4;
-            }
-
-            double opacity = (255 - this.age / opacityFactor) / 4;
-            drawing.setColor(0, 0, 0, opacity);
-            drawing.drawModel(Drawing.rotatedRect, this.posX, this.posY, this.posZ, size * Obstacle.draw_size / Game.tile_size, size * Obstacle.draw_size / Game.tile_size, 1, angle, 0, 0);*/
-        }
         else if (this.type == EffectType.darkFire)
         {
             double size = (this.age * 3 + 10);
@@ -502,15 +479,18 @@ public class Effect extends Movable implements IDrawableWithGlow, IDrawableLight
         }
         else if (this.type == EffectType.boostLight)
         {
+            if (Game.game.window.drawingShadow)
+                return;
+
             Drawing.drawing.setColor(255, 255, 255, 255, 1);
             Game.game.window.shapeRenderer.setBatchMode(true, true, true, true, false);
 
-            double max = (this.size);
+            double max = this.size;
             for (int i = 0; i < max; i++)
             {
                 double a = (max - i) / 400;
                 Drawing.drawing.setColor(255 * a, 255 * a, 200 * a, 255, 1.0);
-                Drawing.drawing.fillBox(this.posX, this.posY, i, Obstacle.draw_size, Obstacle.draw_size, 0, (byte) 62);
+                Drawing.drawing.fillBox(this.posX, this.posY, i, Game.tile_size, Game.tile_size, 0, (byte) 62);
             }
 
             Game.game.window.shapeRenderer.setBatchMode(false, true, true, true, false);
@@ -634,8 +614,6 @@ public class Effect extends Movable implements IDrawableWithGlow, IDrawableLight
         {
             Game.exitToCrash(new RuntimeException("Invalid effect type!"));
         }
-
-        this.firstDraw = false;
     }
 
     public void drawGlow()
@@ -908,10 +886,16 @@ public class Effect extends Movable implements IDrawableWithGlow, IDrawableLight
         }
     }
 
+    public void firstDraw()
+    {
+        Drawing.drawing.setColor(0, 0, 0, 64);
+        Drawing.drawing.trackRenderer.addRect(this, this.posX, this.posY, this.posZ, size * Obstacle.draw_size / Game.tile_size, size * Obstacle.draw_size / Game.tile_size, angle);
+    }
+
     @Override
     public boolean lit()
     {
-        return false;
+        return (Game.fancyLights && type == EffectType.explosion);
     }
 
     @Override

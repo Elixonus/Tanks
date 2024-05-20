@@ -182,8 +182,10 @@ public abstract class Tank extends Movable implements ISolidObject
 
 	public double hitboxSize = 0.95;
 
-	@TankProperty(category = general, id = "explode_on_destroy", name = "Explosive", desc="If set, the tank will explode when destroyed")
+	@TankProperty(category = general, id = "explode_on_destroy", name = "Explosive", desc="If set, the tank will explode when destroyed. The explosion will use the properties of the tank's mine.")
 	public boolean explodeOnDestroy = false;
+
+	public boolean droppedFromCrate = false;
 
 	/** Whether this tank needs to be destroyed before the level ends. */
 	@TankProperty(category = general, id = "mandatory_kill", name = "Must be destroyed", desc="Whether the tank needs to be destroyed to clear the level")
@@ -555,8 +557,11 @@ public abstract class Tank extends Movable implements ISolidObject
 
 		super.update();
 
-		if (this.health <= 0)
+		if (this.health <= 0.00000001)
+		{
 			this.destroy = true;
+			this.health = 0;
+		}
 
 		if (this.managedMotion)
 		{
@@ -627,6 +632,8 @@ public abstract class Tank extends Movable implements ISolidObject
 		e2.setPolarMotion(0, 0);
 		this.setEffectHeight(e1);
 		this.setEffectHeight(e2);
+		e1.firstDraw();
+		e2.firstDraw();
 		Game.tracks.add(e1);
 		Game.tracks.add(e2);
 	}
@@ -902,9 +909,9 @@ public abstract class Tank extends Movable implements ISolidObject
 
 	public void onDestroy()
 	{
-		if (this.explodeOnDestroy && this.age >= 250)
+		if (this.explodeOnDestroy && !(this.droppedFromCrate && this.age < 250))
 		{
-			Explosion e = new Explosion(this.posX, this.posY, Mine.mine_radius, 2, true, this);
+			Explosion e = new Explosion(this.posX, this.posY, this.mine.radius, this.mine.damage, this.mine.destroysObstacles, this);
 			e.explode();
 		}
 	}
@@ -1203,5 +1210,26 @@ public abstract class Tank extends Movable implements ISolidObject
 			else
 				Drawing.drawing.fillOval(x + v, y + v1, s * dotSize, s * dotSize);
 		}
+	}
+
+	public static void drawTank(double x, double y, double r1, double g1, double b1, double r2, double g2, double b2)
+	{
+		drawTank(x, y, r1, g1, b1, r2, g2, b2, Game.tile_size / 2);
+	}
+
+	public static void drawTank(double x, double y, double r1, double g1, double b1, double r2, double g2, double b2, double size)
+	{
+		Drawing.drawing.setColor(r2, g2, b2);
+		Drawing.drawing.drawInterfaceModel(TankModels.tank.base, x, y, size, size, 0);
+
+		Drawing.drawing.setColor(r1, g1, b1);
+		Drawing.drawing.drawInterfaceModel(TankModels.tank.color, x, y, size, size, 0);
+
+		Drawing.drawing.setColor(r2, g2, b2);
+
+		Drawing.drawing.drawInterfaceModel(TankModels.tank.turret, x, y, size, size, 0);
+
+		Drawing.drawing.setColor((r1 + r2) / 2, (g1 + g2) / 2, (b1 + b2) / 2);
+		Drawing.drawing.drawInterfaceModel(TankModels.tank.turretBase, x, y, size, size, 0);
 	}
 }

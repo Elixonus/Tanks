@@ -1,11 +1,9 @@
 package tanks;
 
-import basewindow.BaseFile;
-import basewindow.BaseFileManager;
-import basewindow.BaseWindow;
-import basewindow.ModelPart;
+import basewindow.*;
 import tanks.bullet.*;
 import tanks.bullet.legacy.BulletAir;
+import tanks.bullet.legacy.BulletFlame;
 import tanks.extension.Extension;
 import tanks.extension.ExtensionRegistry;
 import tanks.generator.LevelGenerator;
@@ -33,6 +31,9 @@ import tanks.network.event.*;
 import tanks.network.event.online.*;
 import tanks.obstacle.*;
 import tanks.registry.*;
+import tanks.rendering.ShaderGroundIntro;
+import tanks.rendering.ShaderGroundOutOfBounds;
+import tanks.rendering.ShaderTracks;
 import tanks.tank.*;
 import tanks.translation.Translation;
 
@@ -70,15 +71,24 @@ public class Game
 	public static ArrayList<Effect> tracks = new ArrayList<>();
 	public static ArrayList<Cloud> clouds = new ArrayList<>();
 	public static SynchronizedList<Player> players = new SynchronizedList<>();
+
+	/**
+	 * Obstacles that need to change how they look next frame
+	 */
+	public static HashSet<Obstacle> redrawObstacles = new HashSet<>();
+
+	/**
+	 * Ground tiles that need to be redrawn due to obstacles being added/removed over them
+	 */
+	public static HashSet<int[]> redrawGroundTiles = new HashSet<>();
+
 	public static Player player;
 
-	public static HashSet<Obstacle> prevObstacles = new HashSet<>();
-
-	public static ArrayList<Movable> removeMovables = new ArrayList<>();
-	public static ArrayList<Obstacle> removeObstacles = new ArrayList<>();
-	public static ArrayList<Effect> removeEffects = new ArrayList<>();
-	public static ArrayList<Effect> removeTracks = new ArrayList<>();
-	public static ArrayList<Cloud> removeClouds = new ArrayList<>();
+	public static HashSet<Movable> removeMovables = new HashSet<>();
+	public static HashSet<Obstacle> removeObstacles = new HashSet<>();
+	public static HashSet<Effect> removeEffects = new HashSet<>();
+	public static HashSet<Effect> removeTracks = new HashSet<>();
+	public static HashSet<Cloud> removeClouds = new HashSet<>();
 
 	public static ArrayList<Effect> addEffects = new ArrayList<>();
 	public static Queue<Effect> recycleEffects = new LinkedList<>();
@@ -109,8 +119,8 @@ public class Game
 	public static double[][] tilesDepth = new double[28][18];
 
 	//Remember to change the version in android's build.gradle and ios's robovm.properties
-	public static final String version = "Tanks v1.5.1";
-	public static final int network_protocol = 51;
+	public static final String version = "Tanks v1.5.2i";
+	public static final int network_protocol = 54;
 	public static boolean debug = false;
 	public static boolean traceAllRays = false;
 	public static boolean showTankIDs = false;
@@ -141,6 +151,8 @@ public class Game
 
 	public static boolean followingCam = false;
 	public static boolean firstPerson = false;
+
+	public static boolean fancyLights = false;
 
 	public static boolean tankTextures = true;
 
@@ -210,6 +222,11 @@ public class Game
 	public static RegistryGenerator registryGenerator = new RegistryGenerator();
 	public static RegistryModelTank registryModelTank = new RegistryModelTank();
 	public static RegistryMinigame registryMinigame = new RegistryMinigame();
+
+	public final HashMap<Class<? extends ShaderGroup>, ShaderGroup> shaderInstances = new HashMap<>();
+	public ShaderGroundIntro shaderIntro;
+	public ShaderGroundOutOfBounds shaderOutOfBounds;
+	public ShaderTracks shaderTracks;
 
 	public static boolean enableExtensions = false;
 	public static boolean autoLoadExtensions = true;
@@ -336,7 +353,8 @@ public class Game
 		NetworkEventMap.register(EventTankTeleport.class);
 		NetworkEventMap.register(EventTankUpdateVisibility.class);
 		NetworkEventMap.register(EventTankUpdateColor.class);
-		NetworkEventMap.register(EventTankTransform.class);
+		NetworkEventMap.register(EventTankTransformPreset.class);
+		NetworkEventMap.register(EventTankTransformCustom.class);
 		NetworkEventMap.register(EventTankCharge.class);
 		NetworkEventMap.register(EventTankMimicTransform.class);
 		NetworkEventMap.register(EventTankMimicLaser.class);
@@ -349,6 +367,7 @@ public class Game
 		NetworkEventMap.register(EventObstacleBoostPanelEffect.class);
 		NetworkEventMap.register(EventPlaySound.class);
 		NetworkEventMap.register(EventSendTankColors.class);
+		NetworkEventMap.register(EventUpdateTankColors.class);
 		NetworkEventMap.register(EventShareLevel.class);
 		NetworkEventMap.register(EventShareCrusade.class);
 		NetworkEventMap.register(EventItemDrop.class);
@@ -475,7 +494,7 @@ public class Game
 		registerObstacle(ObstacleMud.class, "mud");
 		registerObstacle(ObstacleIce.class, "ice");
 		registerObstacle(ObstacleSnow.class, "snow");
-		registerObstacle(ObstacleLava.class, "lava");
+		//registerObstacle(ObstacleLava.class, "lava");
 		registerObstacle(ObstacleBoostPanel.class, "boostpanel");
 		registerObstacle(ObstacleTeleporter.class, "teleporter");
 
@@ -508,7 +527,7 @@ public class Game
 		registerTank(TankBoss.class, "boss", 1.0 / 40, true);
 
 		registerBullet(Bullet.class, Bullet.bullet_name, "bullet_normal.png");
-		registerBullet(BulletFlame2.class, BulletFlame2.bullet_name, "bullet_flame.png");
+		registerBullet(BulletFlame.class, BulletFlame.bullet_name, "bullet_flame.png");
 		registerBullet(BulletLaser.class, BulletLaser.bullet_name, "bullet_laser.png");
 		registerBullet(BulletFreeze.class, BulletFreeze.bullet_name, "bullet_freeze.png");
 		registerBullet(BulletElectric.class, BulletElectric.bullet_name, "bullet_electric.png");
@@ -516,7 +535,7 @@ public class Game
 		registerBullet(BulletArc.class, BulletArc.bullet_name, "bullet_arc.png");
 		registerBullet(BulletExplosive.class, BulletExplosive.bullet_name, "bullet_explosive.png");
 		registerBullet(BulletBoost.class, BulletBoost.bullet_name, "bullet_boost.png");
-		registerBullet(BulletAir2.class, BulletAir2.bullet_name, "bullet_air.png");
+		registerBullet(BulletAir.class, BulletAir.bullet_name, "bullet_air.png");
 		registerBullet(BulletHoming.class, BulletHoming.bullet_name, "bullet_homing.png");
 
 		registerItem(ItemBullet.class, ItemBullet.item_name, "bullet_normal.png");
@@ -674,16 +693,8 @@ public class Game
 	public static void createModels()
 	{
 		Tank.health_model = Drawing.drawing.createModel();
-		Drawing.rotatedRect = Drawing.drawing.createModel();
 
 		TankModels.initialize();
-
-		Drawing.rotatedRect.shapes = new ModelPart.Shape[1];
-		Drawing.rotatedRect.shapes[0] = new ModelPart.Quad(
-				new ModelPart.Point(-0.5, -0.5, 0),
-				new ModelPart.Point(0.5, -0.5, 0),
-				new ModelPart.Point(0.5, 0.5, 0),
-				new ModelPart.Point(-0.5, 0.5, 0), 1);
 
 		double innerHealthEdge = 0.55;
 		double outerHealthEdge = 0.575;
@@ -821,6 +832,19 @@ public class Game
 		EventTankPlayerCreate e = new EventTankPlayerCreate(player, x, y, angle, t, id, drawAge);
 		Game.eventsOut.add(e);
 		e.execute();
+	}
+
+	public static void addObstacle(Obstacle o)
+	{
+		o.removed = false;
+		Game.obstacles.add(o);
+		Game.redrawObstacles.add(o);
+
+		int x = (int) (o.posX / Game.tile_size);
+		int y = (int) (o.posY / Game.tile_size);
+
+		if (x >= 0 && y >= 0 && x < Game.currentSizeX && y < Game.currentSizeY && Game.enable3d)
+			Game.redrawGroundTiles.add(new int[]{x, y});
 	}
 
 	public static boolean usernameInvalid(String username)
@@ -996,7 +1020,10 @@ public class Game
 			e1.printStackTrace();
 		}
 
-		Drawing.drawing.playSound("leave.ogg");
+		if (Game.game.window != null)
+			Drawing.drawing.playSound("leave.ogg");
+		else
+			throw new RuntimeException("Failed to start game", e);
 	}
 
 	public static void resetTiles()
@@ -1025,7 +1052,8 @@ public class Game
 				Game.tilesR[i][j] = (235 + tilesRandom.nextDouble() * var);
 				Game.tilesG[i][j] = (207 + tilesRandom.nextDouble() * var);
 				Game.tilesB[i][j] = (166 + tilesRandom.nextDouble() * var);
-				Game.tilesDepth[i][j] = tilesRandom.nextDouble() * var / 2;
+				double rand = tilesRandom.nextDouble() * var / 2;
+				Game.tilesDepth[i][j] = Game.enable3dBg ? rand : 0;
 			}
 		}
 
@@ -1218,6 +1246,7 @@ public class Game
 		removeEffects.clear();
 		removeTracks.clear();
 		removeClouds.clear();
+		Game.tileDrawables = new Obstacle[Game.currentSizeX][Game.currentSizeY];
 
 		resetNetworkIDs();
 
